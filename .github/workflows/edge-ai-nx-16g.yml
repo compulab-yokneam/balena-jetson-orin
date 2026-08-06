@@ -1,0 +1,44 @@
+name: "CompuLab Edge-AI integration checks"
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/edge-ai-nx-16g.yml'
+      - 'edge-ai-nx-16g.coffee'
+      - 'layers/meta-balena-jetson/conf/templates/default/bblayers.conf.sample'
+      - 'layers/meta-tegra-compulab'
+      - 'layers/meta-tegra-compulab/**'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '.github/workflows/edge-ai-nx-16g.yml'
+      - 'edge-ai-nx-16g.coffee'
+      - 'layers/meta-balena-jetson/conf/templates/default/bblayers.conf.sample'
+      - 'layers/meta-tegra-compulab'
+      - 'layers/meta-tegra-compulab/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository and submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+
+      - name: Validate Edge-AI integration files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(readlink layers/meta-tegra-compulab/recipes-kernel/linux/linux-jammy-nvidia-tegra_%.bbappend)" = "linux.inc"
+          test "$(readlink layers/meta-tegra-compulab/recipes-kernel/linux/linux-yocto_%.bbappend)" = "linux.inc"
+          grep -Fq '${TOPDIR}/../layers/meta-tegra-compulab' layers/meta-balena-jetson/conf/templates/default/bblayers.conf.sample
+          grep -Fq 'ODMDATA = "gbe-uphy-config-9,hsstp-lane-map-3,hsio-uphy-config-0"' layers/meta-tegra-compulab/conf/machine/edge-ai.inc
+          grep -Fq 'tegra234-edge-ai-pinmux.dtsi' layers/meta-tegra-compulab/recipes-bsp/tegra-binaries/uefi-capsule-container/build.sh
+          bash -n layers/meta-tegra-compulab/recipes-bsp/tegra-binaries/uefi-capsule-container/build.sh
